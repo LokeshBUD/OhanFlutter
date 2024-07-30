@@ -13,7 +13,6 @@ class _IntroPageState extends State<IntroPage> with SingleTickerProviderStateMix
   late AnimationController _controller;
   late Animation<double> _animation;
   bool _animationInitialized = false;
-  final bool enabled = true;
 
   @override
   void initState() {
@@ -49,10 +48,16 @@ class _IntroPageState extends State<IntroPage> with SingleTickerProviderStateMix
     );
   }
 
+  void _navigateToLoginPage() {
+    Navigator.pushNamed(context, '/sign_in');
+  }
+
+  void _navigateToSignUpPage() {
+    Navigator.pushNamed(context, '/sign_up');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final VoidCallback? onPressed = enabled ? () {} : null;
-
     return Scaffold(
       body: Center(
         child: _animationInitialized
@@ -75,10 +80,9 @@ class _IntroPageState extends State<IntroPage> with SingleTickerProviderStateMix
                       height: 50,
                       width: 250,
                       child: FilledButton(
-                        onPressed: onPressed,
+                        onPressed: _navigateToLoginPage,
                         style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.all<Color>(
-                              Colors.blue.shade800), // Royal blue color
+                          backgroundColor: MaterialStateProperty.all<Color>(Colors.blue.shade800), // Royal blue color
                         ),
                         child: Text(
                           'Login',
@@ -94,7 +98,7 @@ class _IntroPageState extends State<IntroPage> with SingleTickerProviderStateMix
                       height: 50,
                       width: 250,
                       child: FilledButton.tonal(
-                        onPressed: onPressed,
+                        onPressed: _navigateToSignUpPage,
                         child: Text(
                           'Sign Up',
                           style: GoogleFonts.robotoCondensed(

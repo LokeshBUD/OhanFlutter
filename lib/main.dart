@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import './introPage.dart';
 import './homePage.dart';
+import './forget.dart';
+import './otp.dart';
+import './sign_in.dart';
+import './sign_up.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,6 +25,10 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const IntroPage(),
         '/home': (context) => const HomePage(),
+        '/forget': (context) => const Forget(), // Corrected colon here
+        '/otp': (context) => const OTPScreen(),
+        '/sign_in': (context) => const SignInScreen(),
+        '/sign_up': (context) => const SignUpScreen(),
       },
     );
   }
