@@ -12,6 +12,7 @@ class _ConsultationPageState extends State<ConsultationScreen> {
   final _emailController = TextEditingController();
   final _dateController = TextEditingController();
   final _timeController = TextEditingController();
+  String? _selectedAppointmentType;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class _ConsultationPageState extends State<ConsultationScreen> {
       appBar: AppBar(
         title: Text('Consultation Form'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -33,6 +34,8 @@ class _ConsultationPageState extends State<ConsultationScreen> {
               _buildDateField(context),
               SizedBox(height: 16.0),
               _buildTimeField(context),
+              SizedBox(height: 16.0),
+              _buildAppointmentTypeDropdown(),
               SizedBox(height: 16.0),
               _buildSubmitButton(context),
             ],
@@ -127,6 +130,34 @@ class _ConsultationPageState extends State<ConsultationScreen> {
     );
   }
 
+  Widget _buildAppointmentTypeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedAppointmentType,
+      decoration: InputDecoration(
+        labelText: 'Appointment Type',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.event),
+      ),
+      items: [
+        DropdownMenuItem(value: 'First Time', child: Text('First Time')),
+        DropdownMenuItem(value: 'Regular Checkup', child: Text('Regular Checkup')),
+        DropdownMenuItem(value: 'Follow Up', child: Text('Follow Up')),
+        DropdownMenuItem(value: 'Emergency', child: Text('Emergency')),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedAppointmentType = value;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select an appointment type';
+        }
+        return null;
+      },
+    );
+  }
+
   Widget _buildSubmitButton(BuildContext context) {
     return Center(
       child: ElevatedButton(
@@ -136,6 +167,7 @@ class _ConsultationPageState extends State<ConsultationScreen> {
             String email = _emailController.text;
             String date = _dateController.text;
             String time = _timeController.text;
+            String appointmentType = _selectedAppointmentType ?? '';
 
             Navigator.push(
               context,
@@ -145,6 +177,7 @@ class _ConsultationPageState extends State<ConsultationScreen> {
                   email: email,
                   date: date,
                   time: time,
+                  appointmentType: appointmentType,
                 ),
               ),
             );

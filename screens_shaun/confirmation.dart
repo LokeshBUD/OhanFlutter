@@ -6,8 +6,15 @@ class ConfirmationPage extends StatelessWidget {
   final String email;
   final String date;
   final String time;
+  final String appointmentType;
 
-  ConfirmationPage({required this.name, required this.email, required this.date, required this.time});
+  ConfirmationPage({
+    required this.name,
+    required this.email,
+    required this.date,
+    required this.time,
+    required this.appointmentType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +34,8 @@ class ConfirmationPage extends StatelessWidget {
             Text('Date: $date', style: TextStyle(fontSize: 18)),
             SizedBox(height: 8.0),
             Text('Time: $time', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8.0),
+            Text('Appointment Type: $appointmentType', style: TextStyle(fontSize: 18)),
             SizedBox(height: 16.0),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
