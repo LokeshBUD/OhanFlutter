@@ -72,44 +72,46 @@ class _OTPScreenState extends State<OTPScreen> {
           onPressed: _goBack,
         ),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'lib/assets/images/Logo.png',
-                height: MediaQuery.of(context).size.height * 0.3,
-              ),
-              Text(
-                'Enter OTP',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: _otpController,
-                decoration: InputDecoration(
-                  hintText: 'Enter OTP',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'lib/assets/images/Logo.png',
+                  height: MediaQuery.of(context).size.height * 0.3,
                 ),
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: onOtpSubmit,
-                child: Text('Submit'),
-              ),
-              SizedBox(height: 10),
-              _start > 0
-                  ? Text('Resend OTP in $_start seconds', style: TextStyle(color: Colors.grey))
-                  : ElevatedButton(
-                      onPressed: handleResendOtp,
-                      child: Text('Resend OTP'),
-                    ),
-            ],
+                Text(
+                  'Enter OTP',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: _otpController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter OTP',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: onOtpSubmit,
+                  child: Text('Submit'),
+                ),
+                SizedBox(height: 10),
+                _start > 0
+                    ? Text('Resend OTP in $_start seconds', style: TextStyle(color: Colors.grey))
+                    : ElevatedButton(
+                        onPressed: handleResendOtp,
+                        child: Text('Resend OTP'),
+                      ),
+              ],
+            ),
           ),
         ),
       ),
