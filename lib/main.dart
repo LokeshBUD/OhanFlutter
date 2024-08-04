@@ -5,6 +5,10 @@ import './forget.dart';
 import './otp.dart';
 import './sign_in.dart';
 import './sign_up.dart';
+import './profile.dart';
+import './edit_profile.dart';
+
+
 
 void main() {
   runApp(const MyApp());
@@ -26,8 +30,9 @@ class MyApp extends StatelessWidget {
         '/': (context) => const IntroPage(),
         '/home': (context) => const HomePage(),
         '/forget': (context) => const Forget(), // Corrected colon here
-        '/otp': (context) => const OTPScreen(),
         '/sign_in': (context) => const SignInScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/edit_profile': (context) => const EditProfileScreen(),
         '/sign_up': (context) => const SignUpScreen(),
       },
     );
