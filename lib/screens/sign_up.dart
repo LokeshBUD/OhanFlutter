@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // Add this import for TapGestureRecognizer
-import './components/custom_input.dart';
-import './components/custom_button.dart';
-import './components/date_input.dart';
+import '../components/custom_input.dart';
+import '../components/custom_button.dart';
+import '../components/date_input.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'edit_profile.dart'; // Import the new screen
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
   final Map<String, dynamic> userData;
 
   ProfileScreen({required this.userData});

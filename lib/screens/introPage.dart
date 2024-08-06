@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import './homePage.dart'; // Import the HomePage
+import 'homePage.dart'; // Import the HomePage
 
 class IntroPage extends StatefulWidget {
   const IntroPage({super.key});

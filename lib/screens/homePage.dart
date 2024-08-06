@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'academics.dart';
+import 'profile.dart';
+import 'homescreen.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -9,27 +11,40 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  final PageController _pageController = PageController();
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    _pageController.jumpToPage(index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final userData = {
+      'name': 'John Doe',
+      'email': 'john.doe@example.com',
+      'DOB': '01/01/2000',
+      'photo': 'https://example.com/photo.jpg',
+    };
     return Scaffold(
+      
       appBar: AppBar(
         title: const Text('Home Page'),
       ),
-      body: Center(
-        child: Text(
-          _selectedIndex == 0
-              ? 'Welcome to the Home Page!'
-              : _selectedIndex == 1
-                  ? 'Academics Section'
-                  : 'Profile Section',
-        ),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        children: <Widget>[
+          HomeScreen(),
+          AcademicsScreen(),
+          ProfileScreen(userData: userData),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -52,4 +67,21 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+
+
+void navigateToProfile(BuildContext context) {
+  Navigator.pushNamed(
+    context,
+    '/profile',
+    arguments: {
+      'userData': {
+        'name': 'John Doe',
+        'email': 'john.doe@example.com',
+        'DOB': '01/01/2000',
+        'photo': 'https://example.com/photo.jpg',
+      },
+    },
+  );
 }

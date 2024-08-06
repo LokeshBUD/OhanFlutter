@@ -1,9 +1,14 @@
 // lib/screens/calorie_tracker_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ohan_health_app/providers/calorie_tracker_provider.dart';
+import 'package:ohan_health_app/components/custom_input.dart';
+import 'package:ohan_health_app/components/custom_button.dart';
+import 'package:ohan_health_app/services/nutrition_service.dart';
 
 
 class CalorieTrackerPage extends StatelessWidget {
+  const CalorieTrackerPage({super.key});
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -79,9 +84,9 @@ class _CalorieTrackerBodyState extends State<CalorieTrackerBody> {
   Widget _buildFoodInputForm(BuildContext context, Meal meal, TextEditingController controller, CalorieTrackerProvider provider) {
     return Column(
       children: [
-        CustomInput(label: 'Food Item', controller: controller),
+        CustomInput(placeholder:  'Food Item', controller: controller),
         CustomButton(
-          label: 'Add Food',
+          text: 'Add Food',
           onPressed: () async {
             final inputText = controller.text;
             if (inputText.isNotEmpty) {

@@ -14,9 +14,14 @@ dependencies:
   google_fonts: ^6.2.1
   permission_handler: ^11.3.1  # Updated to a more recent version
   image_picker: ^1.0.0
-  file_picker: ^8.0.6
+  file_picker: ^5.3.1
   font_awesome_flutter: ^10.1.0
   flutter_native_splash: ^2.2.14
+  intl: ^0.17.0
+  device_info_plus: ^8.0.0
+  provider: ^6.0.3
+  http: ^1.2.2 
+
 
 dev_dependencies:
   flutter_test:
@@ -27,4 +32,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-    - assets/b.png
