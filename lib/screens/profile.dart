@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'edit_profile.dart'; // Import the new screen
+import 'calorie_tracker_page.dart'; // Import the calorie tracker page
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -81,10 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile', style: const TextStyle(color: Colors.white),),
+        title: Text('Profile', style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.blueGrey[800],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _handleImageUpload,
-                    child: Text('Upload Image',style: const TextStyle(color: Colors.white)),
+                    child: Text('Upload Image', style: const TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[800], // Change to a tonal blue color
                       padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
@@ -124,7 +125,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: _editProfile,
-                child: Text('Edit Profile',style: const TextStyle(color: Colors.white)),
+                child: Text('Edit Profile', style: const TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[800], // Change to a tonal blue color
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CalorieTrackerPage()),
+                  );
+                },
+                child: Text('Calorie Tracker', style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[800], // Change to a tonal blue color
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
@@ -157,7 +175,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Icon(icon, color: Colors.blueGrey[700]),
           SizedBox(width: 10),
-          Text(info, style: TextStyle(fontSize: 16, color: Colors.blueGrey[800])),
+          Expanded(
+            child: Text(info, style: TextStyle(fontSize: 16, color: Colors.blueGrey[800]), overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
     );

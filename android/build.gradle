@@ -1,3 +1,16 @@
+// Top-level build.gradle (project-level)
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.1.0" // Make sure this matches your Gradle Plugin version
+        classpath 'com.google.gms:google-services:4.3.15'
+        // Add other classpath dependencies here if needed
+    }
+}
+
 allprojects {
     repositories {
         google()
