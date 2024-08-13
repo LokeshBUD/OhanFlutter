@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
+
   @override
   _SignInScreenState createState() => _SignInScreenState();
 }
@@ -17,8 +20,44 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
+  Future<User?> _signInWithGoogle() async {
+    try {
+      // Trigger the Google authentication flow
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+
+      // Create a new credential
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
+      );
+
+      // Once signed in, return the UserCredential
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      return userCredential.user;
+    } catch (e) {
+      print("Google sign-in failed: $e");
+    
+    }
+  }
+
   void onSignInPressed() {
     print("Sign In");
+  }
+
+  void onGoogleSignInPressed() async {
+    User? user = await _signInWithGoogle();
+    if (user != null) {
+      print("Google Sign In successful! User: ${user.displayName}");
+      // Navigate to the desired screen after successful login
+      Navigator.pushNamed(context, '/home');
+    } else {
+      print("Google Sign In failed!");
+    }
   }
 
   void onForgetPasswordPressed() {
@@ -50,8 +89,8 @@ class _SignInScreenState extends State<SignInScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset(
-                        'lib/assets/images/Logo.png',
-                        height: constraints.maxHeight * 0.3, // Adjust the height to be similar to SignUpScreen
+                        'assets/logo.png',
+                        height: constraints.maxHeight * 0.3,
                         width: MediaQuery.of(context).size.width * 0.7,
                       ),
                       SizedBox(height: 20),
@@ -75,6 +114,36 @@ class _SignInScreenState extends State<SignInScreen> {
                       ElevatedButton(
                         onPressed: onSignInPressed,
                         child: Text('Sign In'),
+                      ),
+                      SizedBox(height: 20),
+                      const Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              thickness: 1,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text('or'),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              thickness: 1,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: onGoogleSignInPressed,
+                        icon: Icon(Icons.login),
+                        label: Text('Sign in with Google'),
+                        style: ElevatedButton.styleFrom(
+                           // Google button color
+                        ),
                       ),
                       SizedBox(height: 20),
                       TextButton(

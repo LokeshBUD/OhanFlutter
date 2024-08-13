@@ -16,7 +16,7 @@ class HomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Image.asset(
-                'lib/assets/images/logo-bg-removed.png',
+                'assets/logo.png',
                 width: 400.0, // Adjust width as needed
               ),
               SizedBox(height: 16.0),

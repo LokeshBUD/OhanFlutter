@@ -29,10 +29,6 @@ class _HomePageState extends State<HomePage> {
       'photo': 'https://example.com/photo.jpg',
     };
     return Scaffold(
-      
-      appBar: AppBar(
-        title: const Text('Home Page'),
-      ),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {

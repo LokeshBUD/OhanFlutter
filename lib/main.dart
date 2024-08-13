@@ -18,7 +18,12 @@ import 'screens/homescreen.dart';
 import 'screens/partners.dart';
 import 'screens/video_form_page.dart';
 import 'screens/videos_page.dart';
-void main() {
+
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
   runApp(const MyApp());
 }
 

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "937730950461",
+    "project_id": "ohanflutter",
+    "storage_bucket": "ohanflutter.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:937730950461:android:0184607705d5b3fd78f154",
+        "android_client_info": {
+          "package_name": "com.example.yourapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "937730950461-98l425a622rapsh1jk6hl49ipnji68r9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjo1eWvfZqVuU7i2t37VU7lb4Fcg4Ji6g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "937730950461-98l425a622rapsh1jk6hl49ipnji68r9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "937730950461-03g3b9hutosld9lumrm0uss6jdv3gdoh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.ohanHealthApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

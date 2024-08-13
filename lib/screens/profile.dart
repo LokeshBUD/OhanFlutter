@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile'),
+        title: Text('Profile', style: const TextStyle(color: Colors.white),),
         backgroundColor: Colors.blueGrey[800],
       ),
       body: Padding(
@@ -98,15 +98,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? FileImage(File(_image!))
                         : _userData['photo'] != null
                             ? NetworkImage(_userData['photo']) as ImageProvider
-                            : AssetImage('lib/assets/images/b.png') as ImageProvider,
+                            : AssetImage('assets/b.png') as ImageProvider,
                     backgroundColor: Colors.grey[300],
                   ),
                   SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _handleImageUpload,
-                    child: Text('Upload Image'),
+                    child: Text('Upload Image',style: const TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey[800],
+                      backgroundColor: Colors.blue[800], // Change to a tonal blue color
                       padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -124,9 +124,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: _editProfile,
-                child: Text('Edit Profile'),
+                child: Text('Edit Profile',style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey[800],
+                  backgroundColor: Colors.blue[800], // Change to a tonal blue color
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                   textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
@@ -170,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.blueGrey[800],
+          color: Colors.blue[800], // Change to a tonal blue color
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
