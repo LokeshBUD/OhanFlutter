@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -39,20 +41,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _selectDocument() async {
-    try {
-      final result = await FilePicker.platform.pickFiles();
+Future<void> _selectDocument() async {
+  try {
+    final result = await FilePicker.platform.pickFiles();
 
-      if (result != null) {
-        final file = result.files.first;
-        setState(() {
-          _selectedDocuments.add(file.name);
-        });
-      }
-    } catch (error) {
-      print('Error selecting document: $error');
+    if (result != null) {
+      final file = result.files.first;
+      setState(() {
+        _selectedDocuments.add(file.name);
+      });
+
+      await _uploadDocumentToFirestore(file.name, file.bytes);
     }
+  } catch (error) {
+    print('Error selecting document: $error');
   }
+}
+
+Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
+  if (fileBytes == null) return;
+
+  // Get the user's email
+  String userEmail = _userData['email'];
+
+  // Create a reference to the Firestore document
+  final docRef = FirebaseFirestore.instance.collection('users').doc(userEmail);
+
+  // Check if the document already exists
+  final docSnapshot = await docRef.get();
+
+  if (docSnapshot.exists) {
+    // If it exists, update the documents array
+    await docRef.update({
+      'documents': FieldValue.arrayUnion([fileName])
+    });
+  } else {
+    // If it doesn't exist, create a new document with the documents array
+    await docRef.set({
+      'email': userEmail,
+      'documents': [fileName],
+    });
+  }
+}
 
   void _editProfile() async {
     final updatedData = await Navigator.push<Map<String, dynamic>>(

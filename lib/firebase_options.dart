@@ -70,6 +70,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '937730950461',
     projectId: 'ohanflutter',
     storageBucket: 'ohanflutter.appspot.com',
+    androidClientId: '937730950461-sehb1eeuq7ttnvn6n3jauaqls67f856u.apps.googleusercontent.com',
     iosClientId: '937730950461-03g3b9hutosld9lumrm0uss6jdv3gdoh.apps.googleusercontent.com',
     iosBundleId: 'com.example.ohanHealthApp',
   );
