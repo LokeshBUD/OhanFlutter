@@ -70,7 +70,7 @@ class MyApp extends StatelessWidget {
           case '/profile':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
-              builder: (context) => ProfileScreen(userData: args['userData']),
+              builder: (context) => ProfileScreen(),
             );
           case '/edit_profile':
             final args = settings.arguments as Map<String, dynamic>;
