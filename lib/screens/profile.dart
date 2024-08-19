@@ -4,9 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
-import 'edit_profile.dart'; // Import the new screen
-import 'calorie_tracker_page.dart'; // Import the calorie tracker page
+import 'package:firebase_auth/firebase_auth.dart';
+import 'edit_profile.dart';
+import 'calorie_tracker_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -27,13 +27,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchUserData() async {
-    final docSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(_user.email)
-        .get();
+    final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
+    final docSnapshot = await docRef.get();
+    
     if (docSnapshot.exists) {
       setState(() {
-        _dateOfBirth = docSnapshot.data()!['DOB'] ?? '';
+        _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; // Fetch DOB if it exists
+      });
+
+      // Check if DOB field exists, if not, create it
+      if (_dateOfBirth.isEmpty) {
+        await docRef.update({'DOB': ''});
+      }
+    } else {
+      // If the document doesn't exist, create it with the DOB field
+      await docRef.set({
+        'email': _user.email,
+        'DOB': '',
       });
     }
   }
@@ -114,8 +124,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (updatedData != null) {
       setState(() {
         _dateOfBirth = updatedData['DOB'] ?? '';
+        _user.updateDisplayName(updatedData['name']); // Update the user's display name in FirebaseAuth
       });
+
+      // Update the user's data in Firestore
+      await _updateUserProfileInFirestore(updatedData);
     }
+  }
+
+  Future<void> _updateUserProfileInFirestore(Map<String, dynamic> updatedData) async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
+
+    await userRef.set({
+      'name': updatedData['name'] ?? _user.displayName,
+      'DOB': updatedData['DOB'] ?? _dateOfBirth, // Ensure DOB is included
+    }, SetOptions(merge: true));  // Use merge to only update the fields passed
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pop(context);
   }
 
   @override
@@ -203,6 +231,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                onPressed: _logout,
+                child: Text('Logout',
+                    style: const TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red, // Use red color for logout
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  textStyle:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
             Text('Documents',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
@@ -231,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Icon(icon, color: Colors.blueGrey[700]),
           SizedBox(width: 10),
           Expanded(
-            child: Text(info,
+            child: Text(info.isNotEmpty ? info : 'Not Provided',  // Display "Not Provided" if info is empty
                 style: TextStyle(fontSize: 16, color: Colors.blueGrey[800]),
                 overflow: TextOverflow.ellipsis),
           ),

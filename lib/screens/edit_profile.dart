@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -154,7 +155,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _saveChanges() {
+  void _saveChanges() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
@@ -172,6 +173,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'DOB': _dateOfBirth,
         // Include other updated fields if necessary
       };
+
+      // Update Firestore with new data
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userData['email'])
+          .set(updatedData, SetOptions(merge: true));
 
       widget.onUpdate(updatedData);
 

@@ -1,10 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
-
   @override
   _SignInScreenState createState() => _SignInScreenState();
 }
@@ -19,8 +19,7 @@ class _SignInScreenState extends State<SignInScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
-  Future<User?> _signInWithGoogle() async {
+Future<User?> _signInWithGoogle() async {
   try {
     // Trigger the Google authentication flow
     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -35,13 +34,41 @@ class _SignInScreenState extends State<SignInScreen> {
     );
 
     // Once signed in, return the UserCredential
-    UserCredential userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    User? user = userCredential.user;
 
-    return userCredential.user;
+    // Save user information to Firestore
+    if (user != null) {
+      await _saveUserDataToFirestore(user);
+    }
+
+    return user;
   } catch (e) {
     print("Google sign-in failed: $e");
-    return null; // Return null if an error occurs
+    return null;
+  }
+}
+
+Future<void> _saveUserDataToFirestore(User user) async {
+  final userRef = FirebaseFirestore.instance.collection('users').doc(user.email);
+
+  // Check if the user document already exists
+  final docSnapshot = await userRef.get();
+
+  if (!docSnapshot.exists) {
+    // If the user document doesn't exist, create it
+    await userRef.set({
+      'email': user.email,
+      'name': user.displayName,
+      'photoUrl': user.photoURL,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  } else {
+    // If it does exist, you might want to update the data (optional)
+    await userRef.update({
+      'name': user.displayName,
+      'photoUrl': user.photoURL,
+    });
   }
 }
   void onSignInPressed() {
