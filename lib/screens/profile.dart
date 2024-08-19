@@ -5,24 +5,31 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Storage
 import 'edit_profile.dart';
 import 'calorie_tracker_page.dart';
 
 class ProfileScreen extends StatefulWidget {
+  final Map<String, dynamic>? userData;
+
+  ProfileScreen({Key? key, this.userData}) : super(key: key);
+
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String? _image;
-  String _dateOfBirth = "";
-  List<String> _selectedDocuments = [];
+  late String? _image;
+  late String _dateOfBirth;
   late User _user;
+  List<String> _selectedDocuments = [];  // Initialize the list
 
   @override
   void initState() {
     super.initState();
     _user = FirebaseAuth.instance.currentUser!;
+    _image = widget.userData?['photo'];
+    _dateOfBirth = widget.userData?['DOB'] ?? '';
     _fetchUserData();
   }
 
@@ -33,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (docSnapshot.exists) {
       setState(() {
         _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; // Fetch DOB if it exists
+        _selectedDocuments = List<String>.from(docSnapshot.data()?['documents'] ?? []); // Fetch documents if they exist
       });
 
       // Check if DOB field exists, if not, create it
@@ -56,51 +64,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _image = pickedFile.path;
       });
-      print('Image path: ${pickedFile.path}');
+
+      try {
+        final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/profile_image');
+        final uploadTask = storageRef.putFile(File(_image!));
+        final snapshot = await uploadTask.whenComplete(() => {});
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+
+        // Update the photoURL in FirebaseAuth
+        await _user.updatePhotoURL(downloadUrl);
+
+        // Update the photo field in Firestore
+        final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
+        await docRef.update({'photo': downloadUrl});
+
+        print('Image uploaded and reference updated in Firestore: $downloadUrl');
+      } catch (e) {
+        print('Error uploading image: $e');
+      }
     }
   }
 
   Future<void> _selectDocument() async {
-    try {
-      final result = await FilePicker.platform.pickFiles();
+  try {
+    final result = await FilePicker.platform.pickFiles(withData: true);
 
-      if (result != null) {
-        final file = result.files.first;
-        setState(() {
-          _selectedDocuments.add(file.name);
-        });
+    if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
+      final fileName = file.name;
+      final fileBytes = file.bytes;
 
-        await _uploadDocumentToFirestore(file.name, file.bytes);
+      if (fileBytes == null) {
+        print('No file bytes found. Aborting upload.');
+        return;
       }
-    } catch (error) {
-      print('Error selecting document: $error');
+
+      setState(() {
+        _selectedDocuments.add(fileName);
+      });
+
+      await _uploadDocumentToFirestore(fileName, fileBytes);
+    } else {
+      print('No file selected.');
     }
+  } catch (error) {
+    print('Error selecting document: $error');
+  }
+}
+
+Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
+  if (fileBytes == null) {
+    print('No file bytes found. Aborting upload.');
+    return;
   }
 
-  Future<void> _uploadDocumentToFirestore(
-      String fileName, Uint8List? fileBytes) async {
-    if (fileBytes == null) return;
+  try {
+    print('Starting upload for: $fileName');
+    
+    // Create a reference to Firebase Storage
+    final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/$fileName');
+
+    // Upload the file to Firebase Storage
+    final uploadTask = storageRef.putData(fileBytes);
+
+    // Listen to the upload status
+    uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+      print('Upload in progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+    });
+
+    // Wait for the upload to complete
+    final snapshot = await uploadTask.whenComplete(() {});
+
+    // Get the download URL
+    final downloadUrl = await snapshot.ref.getDownloadURL();
+    print('File uploaded successfully. Download URL: $downloadUrl');
 
     // Create a reference to the Firestore document
-    final docRef =
-        FirebaseFirestore.instance.collection('users').doc(_user.email);
+    final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
 
     // Check if the document already exists
     final docSnapshot = await docRef.get();
 
     if (docSnapshot.exists) {
-      // If it exists, update the documents array
+      // If it exists, update the documents array with the download URL
       await docRef.update({
-        'documents': FieldValue.arrayUnion([fileName])
+        'documents': FieldValue.arrayUnion([downloadUrl])
       });
     } else {
       // If it doesn't exist, create a new document with the documents array
       await docRef.set({
         'email': _user.email,
-        'documents': [fileName],
+        'documents': [downloadUrl],
       });
     }
+    
+    print('Document updated successfully in Firestore.');
+  } catch (error) {
+    print('Error uploading document: $error');
   }
+}
 
   void _editProfile() async {
     final updatedData = await Navigator.push<Map<String, dynamic>>(
@@ -234,19 +296,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: _logout,
-                child: Text('Logout',
-                    style: const TextStyle(color: Colors.white)),
+                child: Text('Logout', style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red, // Use red color for logout
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             SizedBox(height: 20),
-            Text('Documents',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Documents', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -273,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Icon(icon, color: Colors.blueGrey[700]),
           SizedBox(width: 10),
           Expanded(
-            child: Text(info.isNotEmpty ? info : 'Not Provided',  // Display "Not Provided" if info is empty
+            child: Text(info.isNotEmpty ? info : 'Not Provided',
                 style: TextStyle(fontSize: 16, color: Colors.blueGrey[800]),
                 overflow: TextOverflow.ellipsis),
           ),
@@ -310,8 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
         ],
       ),
-      child: Text(name,
-          style: TextStyle(fontSize: 16, color: Colors.blueGrey[800])),
+      child: Text(name, style: TextStyle(fontSize: 16, color: Colors.blueGrey[800])),
     );
   }
 }
