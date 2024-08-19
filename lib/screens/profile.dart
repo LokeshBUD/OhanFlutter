@@ -22,7 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String? _image;
   late String _dateOfBirth;
   late User _user;
-  List<String> _selectedDocuments = [];  // Initialize the list
+  List<String> _selectedDocuments = [];
+  bool _isFilePickerActive = false;  // Initialize the list
 
   @override
   void initState() {
@@ -86,31 +87,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _selectDocument() async {
-  try {
-    final result = await FilePicker.platform.pickFiles(withData: true);
-
-    if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
-      final fileName = file.name;
-      final fileBytes = file.bytes;
-
-      if (fileBytes == null) {
-        print('No file bytes found. Aborting upload.');
-        return;
-      }
-
-      setState(() {
-        _selectedDocuments.add(fileName);
-      });
-
-      await _uploadDocumentToFirestore(fileName, fileBytes);
-    } else {
-      print('No file selected.');
+    if (_isFilePickerActive) {
+      print('File picker is already active.');
+      return;
     }
-  } catch (error) {
-    print('Error selecting document: $error');
+
+    setState(() {
+      _isFilePickerActive = true;
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(withData: true);
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final fileName = file.name;
+        final fileBytes = file.bytes;
+
+        if (fileBytes == null) {
+          print('No file bytes found. Aborting upload.');
+          return;
+        }
+
+        setState(() {
+          _selectedDocuments.add(fileName);
+        });
+
+        await _uploadDocumentToFirestore(fileName, fileBytes);
+      } else {
+        print('No file selected.');
+      }
+    } catch (error) {
+      print('Error selecting document: $error');
+    } finally {
+      setState(() {
+        _isFilePickerActive = false;
+      });
+    }
   }
-}
+
 
 Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
   if (fileBytes == null) {
