@@ -63,6 +63,7 @@ Future<void> _saveUserDataToFirestore(User user) async {
       'photoUrl': user.photoURL,
       'createdAt': FieldValue.serverTimestamp(),
       'documents': [],
+      'calories':[],
     });
   } else {
     // If it does exist, you might want to update the data (optional)

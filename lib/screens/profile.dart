@@ -23,7 +23,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String _dateOfBirth;
   late User _user;
   List<String> _selectedDocuments = [];
-  bool _isFilePickerActive = false;  // Initialize the list
+  List<Map<String, dynamic>> _newDocuments = []; // To store selected documents before submission
+  bool _isFilePickerActive = false;
 
   @override
   void initState() {
@@ -40,16 +41,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     if (docSnapshot.exists) {
       setState(() {
-        _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; // Fetch DOB if it exists
-        _selectedDocuments = List<String>.from(docSnapshot.data()?['documents'] ?? []); // Fetch documents if they exist
+        _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; 
+        _selectedDocuments = List<String>.from(docSnapshot.data()?['documents'] ?? []); 
       });
 
-      // Check if DOB field exists, if not, create it
       if (_dateOfBirth.isEmpty) {
         await docRef.update({'DOB': ''});
       }
     } else {
-      // If the document doesn't exist, create it with the DOB field
       await docRef.set({
         'email': _user.email,
         'DOB': '',
@@ -72,10 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final snapshot = await uploadTask.whenComplete(() => {});
         final downloadUrl = await snapshot.ref.getDownloadURL();
 
-        // Update the photoURL in FirebaseAuth
         await _user.updatePhotoURL(downloadUrl);
-
-        // Update the photo field in Firestore
         final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
         await docRef.update({'photo': downloadUrl});
 
@@ -110,10 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         setState(() {
-          _selectedDocuments.add(fileName);
+          _newDocuments.add({'name': fileName, 'bytes': fileBytes});
         });
-
-        await _uploadDocumentToFirestore(fileName, fileBytes);
       } else {
         print('No file selected.');
       }
@@ -125,59 +119,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
   }
+  
 
+  Future<void> _deleteDocument(String docUrl) async {
+    try {
+      final storageRef = FirebaseStorage.instance.refFromURL(docUrl);
+      await storageRef.delete(); // Delete from Firebase Storage
 
-Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
-  if (fileBytes == null) {
-    print('No file bytes found. Aborting upload.');
-    return;
-  }
-
-  try {
-    print('Starting upload for: $fileName');
-    
-    // Create a reference to Firebase Storage
-    final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/$fileName');
-
-    // Upload the file to Firebase Storage
-    final uploadTask = storageRef.putData(fileBytes);
-
-    // Listen to the upload status
-    uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-      print('Upload in progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
-    });
-
-    // Wait for the upload to complete
-    final snapshot = await uploadTask.whenComplete(() {});
-
-    // Get the download URL
-    final downloadUrl = await snapshot.ref.getDownloadURL();
-    print('File uploaded successfully. Download URL: $downloadUrl');
-
-    // Create a reference to the Firestore document
-    final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
-
-    // Check if the document already exists
-    final docSnapshot = await docRef.get();
-
-    if (docSnapshot.exists) {
-      // If it exists, update the documents array with the download URL
+      final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
       await docRef.update({
-        'documents': FieldValue.arrayUnion([downloadUrl])
+        'documents': FieldValue.arrayRemove([docUrl])
       });
-    } else {
-      // If it doesn't exist, create a new document with the documents array
-      await docRef.set({
-        'email': _user.email,
-        'documents': [downloadUrl],
+
+      setState(() {
+        _selectedDocuments.remove(docUrl); // Remove from local list
       });
+
+      print('Document deleted successfully.');
+    } catch (error) {
+      print('Error deleting document: $error');
     }
-    
-    print('Document updated successfully in Firestore.');
-  } catch (error) {
-    print('Error uploading document: $error');
   }
-}
+
+  Future<void> _submitDocuments() async {
+    for (var doc in _newDocuments) {
+      await _uploadDocumentToFirestore(doc['name'], doc['bytes']);
+    }
+
+    setState(() {
+      _newDocuments.clear(); // Clear the list after submission
+    });
+  }
+
+  Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
+    if (fileBytes == null) {
+      print('No file bytes found. Aborting upload.');
+      return;
+    }
+
+    try {
+      final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/$fileName');
+      final uploadTask = storageRef.putData(fileBytes);
+      final snapshot = await uploadTask.whenComplete(() {});
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
+
+      final docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        await docRef.update({
+          'documents': FieldValue.arrayUnion([downloadUrl])
+        });
+      } else {
+        await docRef.set({
+          'email': _user.email,
+          'documents': [downloadUrl],
+        });
+      }
+
+      setState(() {
+        _selectedDocuments.add(downloadUrl);
+      });
+
+      print('Document updated successfully in Firestore.');
+    } catch (error) {
+      print('Error uploading document: $error');
+    }
+  }
 
   void _editProfile() async {
     final updatedData = await Navigator.push<Map<String, dynamic>>(
@@ -201,10 +210,9 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
     if (updatedData != null) {
       setState(() {
         _dateOfBirth = updatedData['DOB'] ?? '';
-        _user.updateDisplayName(updatedData['name']); // Update the user's display name in FirebaseAuth
+        _user.updateDisplayName(updatedData['name']);
       });
 
-      // Update the user's data in Firestore
       await _updateUserProfileInFirestore(updatedData);
     }
   }
@@ -214,8 +222,8 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
 
     await userRef.set({
       'name': updatedData['name'] ?? _user.displayName,
-      'DOB': updatedData['DOB'] ?? _dateOfBirth, // Ensure DOB is included
-    }, SetOptions(merge: true));  // Use merge to only update the fields passed
+      'DOB': updatedData['DOB'] ?? _dateOfBirth,
+    }, SetOptions(merge: true));
   }
 
   Future<void> _logout() async {
@@ -223,7 +231,7 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
     Navigator.pop(context);
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -253,12 +261,9 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
                     child: Text('Upload Image',
                         style: const TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Colors.blue[800], // Change to a tonal blue color
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      textStyle:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      backgroundColor: Colors.blue[800],
+                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -278,11 +283,9 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
                 child: Text('Edit Profile',
                     style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.blue[800], // Change to a tonal blue color
+                  backgroundColor: Colors.blue[800],
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -292,18 +295,69 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => CalorieTrackerPage()),
+                    MaterialPageRoute(builder: (context) => CalorieTrackerPage()),
                   );
                 },
                 child: Text('Calorie Tracker',
                     style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.blue[800], // Change to a tonal blue color
+                  backgroundColor: Colors.blue[800],
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            Text('Documents',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            // List of selected documents
+            ..._selectedDocuments.map((docUrl) {
+              return ListTile(
+                title: Text(docUrl.split('/').last), // Display the file name
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _deleteDocument(docUrl),
+                ),
+              );
+            }).toList(),
+            // List of newly selected documents (not yet uploaded)
+            ..._newDocuments.map((doc) {
+              return ListTile(
+                title: Text(doc['name']),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      _newDocuments.remove(doc);
+                    });
+                  },
+                ),
+              );
+            }).toList(),
+            SizedBox(height: 10),
+            Center(
+              child: ElevatedButton(
+                onPressed: _selectDocument,
+                child: Text('Select Document',
+                    style: const TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[800],
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                onPressed: _submitDocuments,
+                child: Text('Submit Documents',
+                    style: const TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[800],
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -311,26 +365,13 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
             Center(
               child: ElevatedButton(
                 onPressed: _logout,
-                child: Text('Logout', style: const TextStyle(color: Colors.white)),
+                child: Text('Logout',
+                    style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // Use red color for logout
+                  backgroundColor: Colors.red[800],
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                   textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Text('Documents', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildUploadButton(),
-                  ..._selectedDocuments
-                      .map((doc) => _buildDocumentItem(doc))
-                      .toList(),
-                ],
               ),
             ),
           ],
@@ -339,52 +380,16 @@ Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) a
     );
   }
 
-  Widget _buildProfileInfo(IconData icon, String info) {
+  Widget _buildProfileInfo(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blueGrey[700]),
+          Icon(icon, color: Colors.blueGrey[800]),
           SizedBox(width: 10),
-          Expanded(
-            child: Text(info.isNotEmpty ? info : 'Not Provided',
-                style: TextStyle(fontSize: 16, color: Colors.blueGrey[800]),
-                overflow: TextOverflow.ellipsis),
-          ),
+          Text(text, style: TextStyle(fontSize: 16)),
         ],
       ),
-    );
-  }
-
-  Widget _buildUploadButton() {
-    return GestureDetector(
-      onTap: _selectDocument,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.blue[800], // Change to a tonal blue color
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Center(
-          child: Icon(Icons.add, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDocumentItem(String name) {
-    return Container(
-      margin: EdgeInsets.only(right: 10),
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(5),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
-        ],
-      ),
-      child: Text(name, style: TextStyle(fontSize: 16, color: Colors.blueGrey[800])),
     );
   }
 }
