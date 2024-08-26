@@ -73,9 +73,52 @@ Future<void> _saveUserDataToFirestore(User user) async {
     });
   }
 }
-  void onSignInPressed() {
-    print("Sign In");
+ void onSignInPressed() async {
+  final String email = _usernameController.text.trim();
+  final String password = _passwordController.text.trim();
+
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please enter both email and password')),
+    );
+    return;
   }
+
+  try {
+    // Sign in with email and password
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    User? user = userCredential.user;
+
+    if (user != null) {
+      print("Sign In successful! User: ${user.displayName}");
+      // Navigate to the desired screen after successful login
+      Navigator.pushNamed(context, '/home');
+    }
+  } on FirebaseAuthException catch (e) {
+    String message;
+
+    switch (e.code) {
+      case 'user-not-found':
+        message = 'No user found for that email.';
+        break;
+      case 'wrong-password':
+        message = 'Wrong password provided.';
+        break;
+      default:
+        message = 'An error occurred. Please try again.';
+        break;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
 
   void onGoogleSignInPressed() async {
     User? user = await _signInWithGoogle();

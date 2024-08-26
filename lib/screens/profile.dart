@@ -5,33 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Storage
 import 'edit_profile.dart';
 import 'calorie_tracker_page.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final Map<String, dynamic>? userData;
-
-  ProfileScreen({Key? key, this.userData}) : super(key: key);
-
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late String? _image;
-  late String _dateOfBirth;
-  late User _user;
+  String? _image;
+  String _dateOfBirth = "";
   List<String> _selectedDocuments = [];
-  List<Map<String, dynamic>> _newDocuments = []; // To store selected documents before submission
-  bool _isFilePickerActive = false;
+  late User _user;
 
   @override
   void initState() {
     super.initState();
     _user = FirebaseAuth.instance.currentUser!;
-    _image = widget.userData?['photo'];
-    _dateOfBirth = widget.userData?['DOB'] ?? '';
     _fetchUserData();
   }
 
@@ -41,14 +32,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     if (docSnapshot.exists) {
       setState(() {
-        _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; 
-        _selectedDocuments = List<String>.from(docSnapshot.data()?['documents'] ?? []); 
+        _dateOfBirth = docSnapshot.data()?['DOB'] ?? ''; // Fetch DOB if it exists
       });
 
+      // Check if DOB field exists, if not, create it
       if (_dateOfBirth.isEmpty) {
         await docRef.update({'DOB': ''});
       }
     } else {
+      // If the document doesn't exist, create it with the DOB field
       await docRef.set({
         'email': _user.email,
         'DOB': '',
@@ -64,127 +56,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _image = pickedFile.path;
       });
-
-      try {
-        final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/profile_image');
-        final uploadTask = storageRef.putFile(File(_image!));
-        final snapshot = await uploadTask.whenComplete(() => {});
-        final downloadUrl = await snapshot.ref.getDownloadURL();
-
-        await _user.updatePhotoURL(downloadUrl);
-        final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
-        await docRef.update({'photo': downloadUrl});
-
-        print('Image uploaded and reference updated in Firestore: $downloadUrl');
-      } catch (e) {
-        print('Error uploading image: $e');
-      }
+      print('Image path: ${pickedFile.path}');
     }
   }
 
   Future<void> _selectDocument() async {
-    if (_isFilePickerActive) {
-      print('File picker is already active.');
-      return;
-    }
-
-    setState(() {
-      _isFilePickerActive = true;
-    });
-
     try {
-      final result = await FilePicker.platform.pickFiles(withData: true);
+      final result = await FilePicker.platform.pickFiles();
 
-      if (result != null && result.files.isNotEmpty) {
+      if (result != null) {
         final file = result.files.first;
-        final fileName = file.name;
-        final fileBytes = file.bytes;
-
-        if (fileBytes == null) {
-          print('No file bytes found. Aborting upload.');
-          return;
-        }
-
         setState(() {
-          _newDocuments.add({'name': fileName, 'bytes': fileBytes});
+          _selectedDocuments.add(file.name);
         });
-      } else {
-        print('No file selected.');
+
+        await _uploadDocumentToFirestore(file.name, file.bytes);
       }
     } catch (error) {
       print('Error selecting document: $error');
-    } finally {
-      setState(() {
-        _isFilePickerActive = false;
-      });
     }
   }
-  
 
-  Future<void> _deleteDocument(String docUrl) async {
-    try {
-      final storageRef = FirebaseStorage.instance.refFromURL(docUrl);
-      await storageRef.delete(); // Delete from Firebase Storage
+  Future<void> _uploadDocumentToFirestore(
+      String fileName, Uint8List? fileBytes) async {
+    if (fileBytes == null) return;
 
-      final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
+    // Create a reference to the Firestore document
+    final docRef =
+        FirebaseFirestore.instance.collection('users').doc(_user.email);
+
+    // Check if the document already exists
+    final docSnapshot = await docRef.get();
+
+    if (docSnapshot.exists) {
+      // If it exists, update the documents array
       await docRef.update({
-        'documents': FieldValue.arrayRemove([docUrl])
+        'documents': FieldValue.arrayUnion([fileName])
       });
-
-      setState(() {
-        _selectedDocuments.remove(docUrl); // Remove from local list
+    } else {
+      // If it doesn't exist, create a new document with the documents array
+      await docRef.set({
+        'email': _user.email,
+        'documents': [fileName],
       });
-
-      print('Document deleted successfully.');
-    } catch (error) {
-      print('Error deleting document: $error');
-    }
-  }
-
-  Future<void> _submitDocuments() async {
-    for (var doc in _newDocuments) {
-      await _uploadDocumentToFirestore(doc['name'], doc['bytes']);
-    }
-
-    setState(() {
-      _newDocuments.clear(); // Clear the list after submission
-    });
-  }
-
-  Future<void> _uploadDocumentToFirestore(String fileName, Uint8List? fileBytes) async {
-    if (fileBytes == null) {
-      print('No file bytes found. Aborting upload.');
-      return;
-    }
-
-    try {
-      final storageRef = FirebaseStorage.instance.ref().child('users/${_user.email}/$fileName');
-      final uploadTask = storageRef.putData(fileBytes);
-      final snapshot = await uploadTask.whenComplete(() {});
-      final downloadUrl = await snapshot.ref.getDownloadURL();
-
-      final docRef = FirebaseFirestore.instance.collection('users').doc(_user.email);
-
-      final docSnapshot = await docRef.get();
-
-      if (docSnapshot.exists) {
-        await docRef.update({
-          'documents': FieldValue.arrayUnion([downloadUrl])
-        });
-      } else {
-        await docRef.set({
-          'email': _user.email,
-          'documents': [downloadUrl],
-        });
-      }
-
-      setState(() {
-        _selectedDocuments.add(downloadUrl);
-      });
-
-      print('Document updated successfully in Firestore.');
-    } catch (error) {
-      print('Error uploading document: $error');
     }
   }
 
@@ -210,9 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (updatedData != null) {
       setState(() {
         _dateOfBirth = updatedData['DOB'] ?? '';
-        _user.updateDisplayName(updatedData['name']);
+        _user.updateDisplayName(updatedData['name']); // Update the user's display name in FirebaseAuth
       });
 
+      // Update the user's data in Firestore
       await _updateUserProfileInFirestore(updatedData);
     }
   }
@@ -222,8 +137,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     await userRef.set({
       'name': updatedData['name'] ?? _user.displayName,
-      'DOB': updatedData['DOB'] ?? _dateOfBirth,
-    }, SetOptions(merge: true));
+      'DOB': updatedData['DOB'] ?? _dateOfBirth, // Ensure DOB is included
+    }, SetOptions(merge: true));  // Use merge to only update the fields passed
   }
 
   Future<void> _logout() async {
@@ -231,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pop(context);
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -261,9 +176,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Text('Upload Image',
                         style: const TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[800],
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      backgroundColor:
+                          Colors.blue[800], // Change to a tonal blue color
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      textStyle:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -278,100 +196,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildProfileInfo(Icons.calendar_today, _dateOfBirth),
             SizedBox(height: 20),
             Center(
-              child: ElevatedButton(
-                onPressed: _editProfile,
-                child: Text('Edit Profile',
-                    style: const TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[800],
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => CalorieTrackerPage()),
-                  );
-                },
-                child: Text('Calorie Tracker',
-                    style: const TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[800],
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _editProfile,
+                      child: Text('Edit Profile',
+                          style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[800],
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10), // Add space between buttons
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => CalorieTrackerPage()),
+                        );
+                      },
+                      child: Text('Calorie Tracker',
+                          style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[800],
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10), // Add space between buttons
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _logout,
+                      child: Text('Logout', style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 247, 114, 104),
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 20),
             Text('Documents',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
-            // List of selected documents
-            ..._selectedDocuments.map((docUrl) {
-              return ListTile(
-                title: Text(docUrl.split('/').last), // Display the file name
-                trailing: IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteDocument(docUrl),
-                ),
-              );
-            }).toList(),
-            // List of newly selected documents (not yet uploaded)
-            ..._newDocuments.map((doc) {
-              return ListTile(
-                title: Text(doc['name']),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      _newDocuments.remove(doc);
-                    });
-                  },
-                ),
-              );
-            }).toList(),
-            SizedBox(height: 10),
-            Center(
-              child: ElevatedButton(
-                onPressed: _selectDocument,
-                child: Text('Select Document',
-                    style: const TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[800],
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _submitDocuments,
-                child: Text('Submit Documents',
-                    style: const TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[800],
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _logout,
-                child: Text('Logout',
-                    style: const TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[800],
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildUploadButton(),
+                  ..._selectedDocuments
+                      .map((doc) => _buildDocumentItem(doc))
+                      .toList(),
+                ],
               ),
             ),
           ],
@@ -380,16 +265,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileInfo(IconData icon, String text) {
+  Widget _buildProfileInfo(IconData icon, String info) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blueGrey[800]),
+          Icon(icon, color: Colors.blueGrey[700]),
           SizedBox(width: 10),
-          Text(text, style: TextStyle(fontSize: 16)),
+          Expanded(
+            child: Text(info.isNotEmpty ? info : 'Not Provided',  // Display "Not Provided" if info is empty
+                style: TextStyle(fontSize: 16, color: Colors.blueGrey[800]),
+                overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildUploadButton() {
+    return GestureDetector(
+      onTap: _selectDocument,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.blue[800], // Change to a tonal blue color
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Icon(Icons.add, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentItem(String name) {
+    return Container(
+      margin: EdgeInsets.only(right: 10),
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(5),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: Text(name,
+          style: TextStyle(fontSize: 16, color: Colors.blueGrey[800])),
     );
   }
 }

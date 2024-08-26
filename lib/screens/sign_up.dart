@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // Add this import for TapGestureRecognizer
 import '../components/custom_input.dart';
@@ -17,8 +19,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordRepeatController = TextEditingController();
   DateTime? _selectedDate;
 
-  void onRegisterPressed() {
-    Navigator.pushNamed(context, '/otp', arguments: 'signUp');
+  void onRegisterPressed() async {
+    final String username = _usernameController.text.trim();
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text.trim();
+    final String passwordRepeat = _passwordRepeatController.text.trim();
+
+    if (password != passwordRepeat) {
+      // Show error: Passwords do not match
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    try {
+      // Create a new user with email and password in Firebase Auth
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Add user details to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'username': username,
+        'email': email,
+        'dob': _selectedDate != null ? _selectedDate!.toIso8601String() : null,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Navigate to OTP screen (or other screen)
+      Navigator.pushNamed(context, '/sign_in');
+    } on FirebaseAuthException catch (e) {
+      // Handle Firebase Auth errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? 'An error occurred')),
+      );
+    }
   }
 
   Future<void> _selectDate() async {

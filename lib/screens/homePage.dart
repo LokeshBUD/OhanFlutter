@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
         children: <Widget>[
           HomeScreen(),
           AcademicsScreen(),
-          ProfileScreen(userData: userData), // Pass userData here
+          ProfileScreen(), // Pass userData here
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
